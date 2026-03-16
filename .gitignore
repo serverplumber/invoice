@@ -1,0 +1,22 @@
+invoiceninja/
+data/
+assets/
+
+# IDE
+*.swp
+*.swo
+*~
+.DS_Store
+.projectile
+.vscode/
+.config/
+.lesshst
+.local/
+.idea/
+*.iml
+result
+containers/**/*.tar.gz
+
+# OS
+Thumbs.db
+.env.local

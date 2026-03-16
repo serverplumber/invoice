@@ -1,0 +1,9 @@
+{
+  "name": "krump",
+  "image": "localhost/dev:latest",
+  "remoteUser": "root",
+    "mounts": [
+    "source=nix-store,target=/nix,type=volume"
+  ],
+  "runArgs": ["--userns=keep-id:uid=0,gid=0"]
+}
