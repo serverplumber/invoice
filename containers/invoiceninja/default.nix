@@ -31,9 +31,23 @@ in {
       paths = [
         php
         pkgs.fakeNss
+        pkgs.gnupg
+        pkgs.rsync
+        pkgs.noto-fonts
+        pkgs.wqy_microhei
+        pkgs.wqy_zenhei
+        pkgs.chromium
         pkgs.busybox
+        pkgs.mariadb.client
       ];
     };
+
+    fakeRootCommands = ''
+      #!${pkgs.runtimeShell}
+      mkdir -p /var/www/.config
+      chmod 777 /var/www/.config   # Chrome needs this
+    '';
+    enableFakechroot = true;
 
     config = {
       Cmd = [
@@ -50,7 +64,18 @@ in {
         "LOG_CHANNEL=stderr"
         "SESSION_DRIVER=database"
         "QUEUE_CONNECTION=database"
+        "SNAPPDF_CHROMIUM_PATH=chromium"   # added
       ];
+      Healthcheck = {
+        Test = [
+          "CMD-SHELL"
+          "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"
+        ];
+        Interval = 30000000000;   # 30s in nanoseconds
+        Timeout = 3000000000;     # 3s
+        StartPeriod = 100000000000; # 100s
+        Retries = 3;
+      };
     };
   };
 }

@@ -11,6 +11,7 @@ nix_image := "ghcr.io/nixos/nix"
 podman := "podman"
 workspace       := "/workspace"
 project_root    := justfile_directory()
+invoice_db_pw   := "invoiceninja" # override this at the cmdline
 
 # Nix flags kept explicit but centralized
 nix_flags := "--extra-experimental-features nix-command --extra-experimental-features flakes"
@@ -187,6 +188,7 @@ run-mariadb: _not-in-container
       -v {{project_root}}/data/mysql-tmp:/tmp:z \
       -v {{project_root}}/data/mysql-run:/run/mysqld:z \
       --env-file {{project_root}}/invoiceninja.env \
+      -e INVOICENINJA_DB_PASSWORD={{invoice_db_pw}} \
       localhost/{{project_name}}-mariadb:latest
 
 # Run Invoice Ninja in the pod
@@ -196,10 +198,14 @@ run-invoiceninja: _not-in-container
       --name invoiceninja \
       -v {{project_root}}/invoiceninja:/var/www/invoiceninja:z \
       --env-file {{project_root}}/invoiceninja.env \
+      -e DB_PASSWORD={{invoice_db_pw}} \
       localhost/invoiceninja:latest
 
 # Start the whole thing
-start: pod-create run-mariadb run-invoiceninja
+start: setup-dirs
+    just pod-create
+    just run-mariadb
+    just run-invoiceninja
 
 # Tear it all down
 stop: _not-in-container
@@ -216,3 +222,30 @@ setup-dirs:
     mkdir -p {{project_root}}/data/mysql
     mkdir -p {{project_root}}/data/mysql-tmp
     mkdir -p {{project_root}}/data/mysql-run
+
+# clean data
+clean-data:
+    rm -rf {{project_root}}/data/mysql
+    rm -rf {{project_root}}/data/mysql-tmp
+    rm -rf {{project_root}}/data/mysql-run
+
+# Create the invoiceninja database and user
+# with password $INVOICENINJA_DB_PASSWORD
+setup-mariadb:
+    echo "DB_PASSWORD is: {{invoice_db_pw}}"
+    {{podman}} exec mariadb mariadb -u root -e \
+      "CREATE DATABASE IF NOT EXISTS invoiceninja CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; \
+       CREATE USER IF NOT EXISTS 'invoiceninja'@'localhost' IDENTIFIED BY '{{invoice_db_pw}}'; \
+       GRANT ALL PRIVILEGES ON invoiceninja.* TO 'invoiceninja'@'localhost'; \
+       FLUSH PRIVILEGES;"
+
+# Run Laravel migrations
+migrate:
+    {{podman}} exec invoiceninja php /var/www/invoiceninja/artisan migrate --force
+
+# Seed the database
+seed:
+    {{podman}} exec invoiceninja php /var/www/invoiceninja/artisan db:seed --force
+
+echo:
+    echo {{invoice_db_pw}}

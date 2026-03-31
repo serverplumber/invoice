@@ -7,7 +7,8 @@ initScript = pkgs.writeShellScriptBin "mariadb-entrypoint" ''
   exec ${pkgs.mariadb}/bin/mariadbd \
     --datadir=/var/lib/mysql \
     --user=root \
-    --console
+    --console \
+    --bind-address=0.0.0.0
 '';
 in
 {
